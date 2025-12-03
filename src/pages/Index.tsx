@@ -1,22 +1,35 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProductionQueue } from '@/components/dashboard/ProductionQueue';
 import { GanttChart } from '@/components/gantt/GanttChart';
 import { ObrasList } from '@/components/obras/ObrasList';
 import { FormasList } from '@/components/obras/FormasList';
-import { mockObras, mockFormas, mockProductionItems, sortByPriority, getPriorityValue } from '@/data/mockData';
-import { Factory, Package, Clock, AlertTriangle, TrendingUp, Layers } from 'lucide-react';
+import { ObraForm } from '@/components/forms/ObraForm';
+import { FormaForm } from '@/components/forms/FormaForm';
+import { ProductionItemForm } from '@/components/forms/ProductionItemForm';
+import { useObras } from '@/hooks/useObras';
+import { useFormas } from '@/hooks/useFormas';
+import { useProductionItems } from '@/hooks/useProductionItems';
+import { getPriorityValue } from '@/data/mockData';
+import { Factory, Package, Clock, AlertTriangle, TrendingUp, Layers, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  const { data: obras = [], isLoading: loadingObras } = useObras();
+  const { data: formas = [], isLoading: loadingFormas } = useFormas();
+  const { data: productionItems = [], isLoading: loadingItems } = useProductionItems();
+
+  const isLoading = loadingObras || loadingFormas || loadingItems;
 
   // Sort production items by priority (obra priority first, then item priority, then by size)
   const sortedProductionItems = useMemo(() => {
-    return [...mockProductionItems].sort((a, b) => {
+    return [...productionItems].sort((a, b) => {
       // First by obra priority
-      const obraA = mockObras.find(o => o.id === a.obraId);
-      const obraB = mockObras.find(o => o.id === b.obraId);
+      const obraA = obras.find(o => o.id === a.obraId);
+      const obraB = obras.find(o => o.id === b.obraId);
       const obraPriorityDiff = getPriorityValue(obraB?.priority || 'low') - getPriorityValue(obraA?.priority || 'low');
       if (obraPriorityDiff !== 0) return obraPriorityDiff;
 
@@ -25,24 +38,24 @@ const Index = () => {
       if (itemPriorityDiff !== 0) return itemPriorityDiff;
 
       // Then by forma size (larger first)
-      const formaA = mockFormas.find(f => f.id === a.formaId);
-      const formaB = mockFormas.find(f => f.id === b.formaId);
+      const formaA = formas.find(f => f.id === a.formaId);
+      const formaB = formas.find(f => f.id === b.formaId);
       const sizeA = (formaA?.dimensions.length || 0) * (formaA?.dimensions.width || 0) * (formaA?.dimensions.height || 0);
       const sizeB = (formaB?.dimensions.length || 0) * (formaB?.dimensions.width || 0) * (formaB?.dimensions.height || 0);
       return sizeB - sizeA;
     });
-  }, []);
+  }, [productionItems, obras, formas]);
 
   // Calculate stats
   const stats = useMemo(() => {
-    const totalItems = mockProductionItems.length;
-    const inProgress = mockProductionItems.filter(i => i.status === 'in-progress').length;
-    const pending = mockProductionItems.filter(i => i.status === 'pending').length;
-    const totalQuantity = mockProductionItems.reduce((sum, i) => sum + i.quantity, 0);
-    const totalProduced = mockProductionItems.reduce((sum, i) => sum + i.produced, 0);
-    const criticalCount = mockProductionItems.filter(i => i.priority === 'critical' || i.priority === 'high').length;
-    const activeObras = mockObras.filter(o => o.status === 'active').length;
-    const availableFormas = mockFormas.filter(f => f.status === 'available').length;
+    const totalItems = productionItems.length;
+    const inProgress = productionItems.filter(i => i.status === 'in-progress').length;
+    const pending = productionItems.filter(i => i.status === 'pending').length;
+    const totalQuantity = productionItems.reduce((sum, i) => sum + i.quantity, 0);
+    const totalProduced = productionItems.reduce((sum, i) => sum + i.produced, 0);
+    const criticalCount = productionItems.filter(i => i.priority === 'critical' || i.priority === 'high').length;
+    const activeObras = obras.filter(o => o.status === 'active').length;
+    const availableFormas = formas.filter(f => f.status === 'available').length;
 
     return {
       totalItems,
@@ -55,7 +68,15 @@ const Index = () => {
       availableFormas,
       completionRate: totalQuantity > 0 ? Math.round((totalProduced / totalQuantity) * 100) : 0,
     };
-  }, []);
+  }, [productionItems, obras, formas]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,12 +85,19 @@ const Index = () => {
       <main className="container mx-auto px-4 py-6">
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-slide-in">
+            {/* Actions */}
+            <div className="flex flex-wrap gap-3">
+              <ObraForm />
+              <FormaForm />
+              <ProductionItemForm obras={obras} formas={formas} />
+            </div>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <StatCard
                 title="Obras Ativas"
                 value={stats.activeObras}
-                subtitle={`${mockObras.length} total`}
+                subtitle={`${obras.length} total`}
                 icon={Factory}
                 variant="primary"
               />
@@ -103,7 +131,7 @@ const Index = () => {
               <StatCard
                 title="Formas Disponíveis"
                 value={stats.availableFormas}
-                subtitle={`${mockFormas.length} total`}
+                subtitle={`${formas.length} total`}
                 icon={Layers}
               />
             </div>
@@ -112,37 +140,42 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ProductionQueue
                 items={sortedProductionItems}
-                obras={mockObras}
-                formas={mockFormas}
+                obras={obras}
+                formas={formas}
               />
               <FormasList
-                formas={mockFormas}
-                productionItems={mockProductionItems}
+                formas={formas}
+                productionItems={productionItems}
               />
             </div>
 
             {/* Gantt Preview */}
             <GanttChart
               items={sortedProductionItems}
-              obras={mockObras}
-              formas={mockFormas}
+              obras={obras}
+              formas={formas}
             />
           </div>
         )}
 
         {activeTab === 'obras' && (
           <div className="space-y-6 animate-slide-in">
+            <div className="flex flex-wrap gap-3">
+              <ObraForm />
+              <FormaForm />
+              <ProductionItemForm obras={obras} formas={formas} />
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <ObrasList
-                  obras={mockObras}
-                  productionItems={mockProductionItems}
+                  obras={obras}
+                  productionItems={productionItems}
                 />
               </div>
               <div>
                 <FormasList
-                  formas={mockFormas}
-                  productionItems={mockProductionItems}
+                  formas={formas}
+                  productionItems={productionItems}
                 />
               </div>
             </div>
@@ -151,15 +184,18 @@ const Index = () => {
 
         {activeTab === 'gantt' && (
           <div className="space-y-6 animate-slide-in">
+            <div className="flex flex-wrap gap-3">
+              <ProductionItemForm obras={obras} formas={formas} />
+            </div>
             <GanttChart
               items={sortedProductionItems}
-              obras={mockObras}
-              formas={mockFormas}
+              obras={obras}
+              formas={formas}
             />
             <ProductionQueue
               items={sortedProductionItems}
-              obras={mockObras}
-              formas={mockFormas}
+              obras={obras}
+              formas={formas}
             />
           </div>
         )}
