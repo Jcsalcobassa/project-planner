@@ -13,10 +13,10 @@ export type ProductionItemInsert = {
   priority: Priority;
   status?: 'pending' | 'in-progress' | 'completed' | 'delayed';
   notes?: string;
-  altura: number | null; // Allow null
-  base: number | null;   // Allow null
-  comprimento: number | null; // Allow null
-  tempoUnitarioMinutos: number | null; // Allow null
+  altura: number; // Now non-nullable
+  base: number;   // Now non-nullable
+  comprimento: number; // Now non-nullable
+  tempoUnitarioMinutos: number; // Now non-nullable
 };
 
 const mapDbToProductionItem = (db: any): ProductionItem => ({
@@ -30,10 +30,10 @@ const mapDbToProductionItem = (db: any): ProductionItem => ({
   priority: db.priority as Priority,
   status: db.status as 'pending' | 'in-progress' | 'completed' | 'delayed',
   notes: db.notes,
-  altura: db.altura_cm, // Map new field
-  base: db.base_cm,     // Map new field
-  comprimento: db.comprimento_cm, // Map new field
-  tempoUnitarioMinutos: db.tempo_unitario_minutos, // Map new field
+  altura: db.altura_cm || 0, // Default to 0 if null from DB
+  base: db.base_cm || 0,     // Default to 0 if null from DB
+  comprimento: db.comprimento_cm || 0, // Default to 0 if null from DB
+  tempoUnitarioMinutos: db.tempo_unitario_minutos || 0, // Default to 0 if null from DB
 });
 
 export const useProductionItems = () => {
@@ -68,10 +68,10 @@ export const useCreateProductionItem = () => {
           priority: item.priority,
           status: item.status || 'pending',
           notes: item.notes,
-          altura_cm: item.altura, // Insert new field (can be null)
-          base_cm: item.base,     // Insert new field (can be null)
-          comprimento_cm: item.comprimento, // Insert new field (can be null)
-          tempo_unitario_minutos: item.tempoUnitarioMinutos, // Insert new field (can be null)
+          altura_cm: item.altura, // Insert new field
+          base_cm: item.base,     // Insert new field
+          comprimento_cm: item.comprimento, // Insert new field
+          tempo_unitario_minutos: item.tempoUnitarioMinutos, // Insert new field
         })
         .select()
         .single();

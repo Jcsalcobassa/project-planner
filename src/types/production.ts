@@ -40,10 +40,10 @@ export interface ProductionItem { // This represents a "peça" request
   status: 'pending' | 'in-progress' | 'completed' | 'delayed';
   notes?: string;
   // New fields for piece dimensions and time
-  altura: number | null; // Allow null
-  base: number | null;   // Allow null
-  comprimento: number | null; // Allow null
-  tempoUnitarioMinutos: number | null; // Allow null
+  altura: number; // Now non-nullable
+  base: number;   // Now non-nullable
+  comprimento: number; // Now non-nullable
+  tempoUnitarioMinutos: number; // Now non-nullable
 }
 
 // New type for a scheduled batch (lote)
